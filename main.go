@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	MapFilePath = "/home/lgian/Pictures/Map50_3.bmp"
+	MapFilePath = "./assets/Map50_3.bmp"
 )
 
 var (
@@ -22,9 +22,9 @@ var (
 
 func main() {
 	m := initializeMap()
-	drawMap(m)
+	m.drawMap()
 	fmt.Println("Starting path finding to goal tile...")
-	fmt.Println(m.GetNeighbours(10, 10))
+	fmt.Println(m.GetNeighbours(12, 10))
 }
 
 func Astar(m Map) {
@@ -42,41 +42,27 @@ func initializeMap() Map {
 	bs := img.Bounds()
 
 	// Initialize 2D slice
-	Map := make([][]uint8, bs.Max.X)
-	for i := range Map {
-		Map[i] = make([]uint8, bs.Max.Y)
-	}
+	m := NewMap(bs.Max.X, bs.Max.Y)
 
-	for y := range Map {
-		for x := range Map[y] {
-			switch img.At(x, y) {
-			case White:
-				Map[x][y] = Tile
-			case Blue:
-				Map[x][y] = Start
-			case Red:
-				Map[x][y] = Goal
-			default:
-				Map[x][y] = Obstacle
-			}
-		}
-	}
-	return Map
-}
-func drawMap(m Map) {
 	for y := range m {
 		for x := range m[y] {
-			switch m[x][y] {
-			case Tile:
-				fmt.Print(".")
-			case Start:
-				fmt.Print("0")
-			case Goal:
-				fmt.Print("X")
-			default:
-				fmt.Print("#")
+			n := &Node{
+				X:      x,
+				Y:      y,
+				parent: nil,
 			}
+			switch img.At(x, y) {
+			case White:
+				n.Type = Tile
+			case Blue:
+				n.Type = Start
+			case Red:
+				n.Type = Goal
+			default:
+				n.Type = Obstacle
+			}
+			m[x][y] = n
 		}
-		fmt.Println()
 	}
+	return m
 }
