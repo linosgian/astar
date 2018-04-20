@@ -19,20 +19,23 @@ var (
 )
 
 func main() {
-	const MapFilePath = "./assets/Map50_3.bmp"
+	const MapFilePath = "./assets/maze.bmp"
 
 	m, start, goal, err := initializeMap(MapFilePath)
 	if err != nil {
 		log.Fatalf("map was not initalized: %q", err)
 	}
 	fmt.Printf("Starting at (%d,%d) towards (%d,%d)\n", start.X, start.Y, goal.X, goal.Y)
-	Astar(m, start, goal)
+	if err := Astar(m, start, goal); err != nil {
+		log.Fatalf("error with path finding: %q", err)
+	}
 	m.drawMap(os.Stdout)
 }
 
 // Receives a grid map, a start and a goal Node.
 // Finds the shortest path from start to goal.
-func Astar(m Map, start, goal *Node) {
+func Astar(m Map, start, goal *Node) error {
+	var c *Node
 	openSet := &PriorityQueue{}
 	heap.Init(openSet)
 
@@ -40,7 +43,7 @@ func Astar(m Map, start, goal *Node) {
 
 	for openSet.Len() > 0 {
 		// Pop current node with highest priority
-		c := heap.Pop(openSet).(*Node)
+		c = heap.Pop(openSet).(*Node)
 
 		if c == goal {
 			break
@@ -71,10 +74,14 @@ func Astar(m Map, start, goal *Node) {
 			}
 		}
 	}
+	if c == nil {
+		return fmt.Errorf("no path found")
+	}
 	// Visualize the optimal path
 	for _, n := range backTracePath(m, start, goal) {
 		m[n.X][n.Y].Type = Path
 	}
+	return nil
 }
 
 // Given the Map, a start and goal Nodes,
@@ -84,7 +91,7 @@ func backTracePath(m Map, start, goal *Node) []*Node {
 
 	// Skip the goal point
 	c := goal.parent
-	for c != start {
+	for c != start && c != nil {
 		path = append(path, c)
 		c = c.parent
 	}
