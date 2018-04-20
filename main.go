@@ -27,7 +27,7 @@ func main() {
 	}
 	fmt.Printf("Starting at (%d,%d) towards (%d,%d)\n", start.X, start.Y, goal.X, goal.Y)
 	Astar(m, start, goal)
-	m.drawMap()
+	m.drawMap(os.Stdout)
 }
 
 // Receives a grid map, a start and a goal Node.

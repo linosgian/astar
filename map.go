@@ -1,9 +1,13 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"io"
+)
 
 type Tile uint8
 
+// Types of Tiles
 const (
 	Normal Tile = iota
 	Obstacle
@@ -14,12 +18,12 @@ const (
 
 type Node struct {
 	X, Y    int
-	Type    Tile // Type of node, e.g. Obstacle
-	f, g, h int
-	parent  *Node
-	closed  bool
-	open    bool
-	index   int
+	Type    Tile  // Type of node, e.g. Obstacle
+	f, g, h int   // Distance costs
+	parent  *Node // Used to reconstruct the shortest path
+	closed  bool  // Indicates if this node is in the "closed set"
+	open    bool  // Same as above, for the open set
+	index   int   // Used by the Priority Queue
 }
 
 // Represents the map on which we'll run A*
@@ -54,23 +58,28 @@ func (m Map) GetNeighbours(n *Node) []*Node {
 	return nbs
 }
 
-// Draw a Map with ASCII characters
-func (m Map) drawMap() {
+// Draws a Map with ASCII characters
+// Writes everything to the given io.Writer
+func (m Map) drawMap(d io.Writer) {
 	for y := range m {
 		for x := range m[y] {
 			switch m[x][y].Type {
 			case Normal:
-				fmt.Print(".")
+				fmt.Fprint(d, ".")
 			case Start:
-				fmt.Print("0")
+				fmt.Fprint(d, "0")
 			case Path:
-				fmt.Print("1")
+				fmt.Fprint(d, "1")
 			case Goal:
-				fmt.Print("X")
+				fmt.Fprint(d, "X")
 			default:
-				fmt.Print("#")
+				fmt.Fprint(d, "#")
 			}
 		}
-		fmt.Println()
+		fmt.Fprintln(d)
 	}
+}
+
+func (n Node) String() string {
+	return fmt.Sprintf("Node[X: %d, Y: %d, Type: %d]", n.X, n.Y, n.Type)
 }
