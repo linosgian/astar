@@ -4,10 +4,12 @@ import (
 	"container/heap"
 	"fmt"
 	"image/color"
+	"image/draw"
 	"log"
 	"math"
 	"os"
 
+	"github.com/nfnt/resize"
 	"golang.org/x/image/bmp"
 )
 
@@ -16,25 +18,32 @@ var (
 	White = color.RGBA{255, 255, 255, 255} // Traversable tile
 	Blue  = color.RGBA{0, 0, 255, 255}     // Starting point
 	Red   = color.RGBA{255, 0, 0, 255}     // Goal point
+	Green = color.RGBA{0, 255, 0, 255}     // Shortest path
 )
 
 func main() {
 	const MapFilePath = "./assets/maze.bmp"
+	var SolutionFilePath = "./solution.bmp"
 
 	m, start, goal, err := initializeMap(MapFilePath)
 	if err != nil {
 		log.Fatalf("map was not initalized: %q", err)
 	}
 	fmt.Printf("Starting at (%d,%d) towards (%d,%d)\n", start.X, start.Y, goal.X, goal.Y)
-	if err := Astar(m, start, goal); err != nil {
+	path, err := Astar(m, start, goal)
+	if err != nil {
 		log.Fatalf("error with path finding: %q", err)
 	}
 	m.drawMap(os.Stdout)
+	if err := SaveFinalBmp(m, path, MapFilePath, SolutionFilePath); err != nil {
+		log.Fatalf("could not write to output file: %q", err)
+	}
+
 }
 
 // Receives a grid map, a start and a goal Node.
 // Finds the shortest path from start to goal.
-func Astar(m Map, start, goal *Node) error {
+func Astar(m Map, start, goal *Node) ([]*Node, error) {
 	var c *Node
 	openSet := &PriorityQueue{}
 	heap.Init(openSet)
@@ -75,13 +84,14 @@ func Astar(m Map, start, goal *Node) error {
 		}
 	}
 	if c == nil {
-		return fmt.Errorf("no path found")
+		return nil, fmt.Errorf("no path found")
 	}
 	// Visualize the optimal path
-	for _, n := range backTracePath(m, start, goal) {
+	path := backTracePath(m, start, goal)
+	for _, n := range path {
 		m[n.X][n.Y].Type = Path
 	}
-	return nil
+	return path, nil
 }
 
 // Given the Map, a start and goal Nodes,
@@ -116,7 +126,7 @@ func initializeMap(MapFilePath string) (m Map, start *Node, goal *Node, err erro
 	// Initialize 2D slice
 	m = NewMap(bs.Max.X, bs.Max.Y)
 
-	// Fill the Map with
+	// Fill the Map
 	for y := range m {
 		for x := range m[y] {
 			n := &Node{X: x, Y: y}
@@ -142,6 +152,35 @@ func initializeMap(MapFilePath string) (m Map, start *Node, goal *Node, err erro
 		return nil, nil, nil, fmt.Errorf("could not find start or goal")
 	}
 	return m, start, goal, nil
+}
+
+func SaveFinalBmp(m Map, path []*Node, MapFilePath, SolutionFilePath string) error {
+	in, err := os.Open(MapFilePath)
+	if err != nil {
+		return fmt.Errorf("could not open map file: %q", err)
+	}
+	img, err := bmp.Decode(in)
+	if err != nil {
+		return fmt.Errorf("could not decode map file: %q", err)
+	}
+	dimg, ok := img.(draw.Image)
+	if !ok {
+		return fmt.Errorf("image is not drawable")
+	}
+	for _, n := range path {
+		dimg.Set(n.X, n.Y, Green)
+	}
+	out, err := os.OpenFile(SolutionFilePath, os.O_RDWR|os.O_CREATE, 0666)
+	if err != nil {
+		return fmt.Errorf("could not output file: %q", err)
+	}
+
+	resizedImg := resize.Resize(1000, 0, dimg, resize.Lanczos3)
+
+	if err := bmp.Encode(out, resizedImg); err != nil {
+		return fmt.Errorf("could not write to output bmp file: %q", err)
+	}
+	return nil
 }
 
 // Takes the current and goal nodes and estimates their distance
